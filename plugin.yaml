@@ -1,0 +1,36 @@
+name: vagrant-plugin
+rundeckPluginVersion: 2.0
+description: Vargant Plugin
+rundeckCompatibilityVersion: 3.x
+targetHostCompatibility: all
+license: Apache 2.0
+author: "@author@"
+date: "@date@"
+version: "@version@"
+url: "@url@"
+tags:
+    - script
+    - ResourceModelSource
+providers:
+    - name: vagrant-resource-model
+      service: ResourceModelSource
+      title: vagrant-plugin
+      description: Get Vagrant instances as rundeck nodes
+      plugin-type: script
+      script-interpreter: python -u
+      script-file: resource-model.py
+      resource-format: resourcejson
+      script-args: ${config.attributes} ${config.ippattern}
+      config:
+        - type: String
+          name: attributes
+          title: 'Default attributes'
+          description: 'List of key=value pairs (space separated). For example: "username=root osFamily=linux"'
+        - type: String
+          name: ippattern
+          title: 'IP Pattern'
+          description: 'Ip pattern to get the hostname IP, eg: 192.168.0.*'
+        - type: Boolean
+          name: debug
+          title: Debug?
+          description: 'Write debug messages to stderr'

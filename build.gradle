@@ -1,0 +1,36 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+plugins {
+    id 'pl.allegro.tech.build.axion-release' version '1.7.0'
+}
+
+ext.pluginName = 'vagrant-plugin'
+ext.pluginDescription = "Vargant Plugin"
+ext.sopsCopyright = "© 2019, Rundeck, Inc."
+ext.sopsUrl = "https://github.com/ltamaster/rundeck-vagrant-plugin"
+ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
+ext.archivesBaseName = "vagrant-plugin"
+ext.pluginBaseFolder = "."
+
+scmVersion {
+    ignoreUncommittedChanges = false
+    tag {
+        prefix = ''
+        versionSeparator = ''
+        def origDeserialize=deserialize
+        //apend .0 to satisfy semver if the tag version is only X.Y
+        deserialize = { config, position, tagName ->
+            def orig = origDeserialize(config, position, tagName)
+            if (orig.split('\\.').length < 3) {
+                orig += ".0"
+            }
+            orig
+        }
+    }
+}
+ext.archiveFilename = ext.archivesBaseName + '-' + version
+
+apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/master/build.gradle'
