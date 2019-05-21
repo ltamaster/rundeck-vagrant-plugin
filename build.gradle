@@ -16,7 +16,7 @@ ext.archivesBaseName = "vagrant-plugin"
 ext.pluginBaseFolder = "."
 
 scmVersion {
-    ignoreUncommittedChanges = false
+    ignoreUncommittedChanges = true
     tag {
         prefix = ''
         versionSeparator = ''
@@ -31,6 +31,8 @@ scmVersion {
         }
     }
 }
+project.version = scmVersion.version
+
 ext.archiveFilename = ext.archivesBaseName + '-' + version
 
 apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/master/build.gradle'
