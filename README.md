@@ -38,4 +38,6 @@ cp build/libs/vagrant-plugin.zip $RDECK_BASE/libext
 * Default attributes: add default attributes , like `username=vargant`
 * IP Pattern: IP pattern that will be used as hostname
 
+![instructions](images/nodes.png)
+
 
