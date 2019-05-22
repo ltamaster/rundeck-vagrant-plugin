@@ -8,6 +8,8 @@ import argparse
 import logging
 import sys
 
+log_level = 'DEBUG'
+
 if os.environ.get('RD_CONFIG_DEBUG') == 'true':
     log_level = 'DEBUG'
 else:
@@ -84,20 +86,19 @@ for vm in list:
         nodename = vm.name
         hostname = nodename
 
-        net_list = []
+        net_list = {}
 
-        for k, v in info[vm.name]["guest_info"].items():
+        for key, value in info[vm.name]["guest_info"].items():
 
-            match = re.match("\/VirtualBox\/GuestInfo\/Net\/(.*)\/V4\/IP",  k)
+            match = re.match("\/VirtualBox\/GuestInfo\/Net\/(.*)\/V4\/IP",  key)
             if match:
-                ipmatch = re.match(ip_pattern,v)
-
-                net = {"vagrant:" + k , v}
-                net_list.append(net)
+                ipmatch = re.match(ip_pattern,value)
+                net = {"vagrant:" + key : value}
+                net_list.update(net)
 
                 if(ipmatch):
-                    log.debug("IP matched: %s" %v)
-                    hostname = v
+                    log.debug("IP matched: %s" %value)
+                    hostname = value
 
         default_settings = {
             'vagrant:OS/Product': info[vm.name]["guest_info"]["/VirtualBox/GuestInfo/OS/Product"],
@@ -120,6 +121,7 @@ for vm in list:
             'vagrant:SharedFolderPath': info[vm.name]["vm_info"]["SharedFolderPathMachineMapping1"]
         }
 
+        default_settings.update(net_list)
         # rundeck attributes
         node =default_settings
 
@@ -127,7 +129,6 @@ for vm in list:
         node["nodename"] = nodename
         node["osFamily"] = default_settings["vagrant:OS/Product"]
         node["osType"] = default_settings["vagrant:ostype"]
-        node.update(dict(net_list))
 
         node["tags"] = "vagrant"
 
