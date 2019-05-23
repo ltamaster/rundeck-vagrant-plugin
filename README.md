@@ -17,15 +17,15 @@ pip install python-vagrant
 ```
 https://github.com/todddeluca/python-vagrant
 
-* install vagrant vm-info plugin
+* install python virtualbox-python
+
+```
+pip install virtualbox
+```
+https://github.com/sethmlarson/virtualbox-python
 
 * rundeck and vagrant must be running with the same user
 
-```
-vagrant plugin install vagrant-vminfo
-```
-
-https://github.com/lynx-ua/vagrant-vminfo
 
 ## Install
 
