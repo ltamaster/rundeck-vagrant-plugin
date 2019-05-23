@@ -7,6 +7,7 @@ import os
 import argparse
 import logging
 import sys
+import virtualbox
 
 log_level = 'DEBUG'
 
@@ -29,11 +30,6 @@ Machine = collections.namedtuple('Machine', ['id', 'name', 'provider', 'state', 
 def global_status(vagrant):
     output = vagrant._run_vagrant_command(['global-status'])
     return _parse_global_status(output)
-
-
-def vm_info(vagrant, name):
-    output = vagrant._run_vagrant_command(['vbinfo',name])
-    return json.loads(output)
 
 
 def _parse_global_status(output):
@@ -73,13 +69,23 @@ log.debug('ip_pattern: %s' % ip_pattern)
 
 list = global_status(vagrant.Vagrant())
 
+vbox = virtualbox.VirtualBox()
+
+
 node_list = []
 for vm in list:
     if(vm.state == "running"):
         node = {}
         path= vm.path
         v1 = vagrant.Vagrant(vm.path)
-        info = vm_info(v1, vm.name)
+
+        vm_id_path = vm.path + "/.vagrant/machines/"+vm.name+"/virtualbox/id"
+
+        f = open(vm_id_path, "r")
+        id = f.read()
+        f.close()
+
+        m  = vbox.find_machine(id)
 
         log.debug("getting vm: %s" % vm.name)
 
@@ -88,47 +94,48 @@ for vm in list:
 
         net_list = {}
 
-        for key, value in info[vm.name]["guest_info"].items():
-
-            match = re.match("\/VirtualBox\/GuestInfo\/Net\/(.*)\/V4\/IP",  key)
-            if match:
-                ipmatch = re.match(ip_pattern,value)
-                net = {"vagrant:" + key : value}
-                net_list.update(net)
-
-                if(ipmatch):
-                    log.debug("IP matched: %s" %value)
-                    hostname = value
+        net_info = m.enumerate_guest_properties("*")
+        net_info_keys = net_info[0]
+        net_info_values = net_info[1]
 
         default_settings = {
-            'vagrant:OS/Product': info[vm.name]["guest_info"]["/VirtualBox/GuestInfo/OS/Product"],
-            'vagrant:VersionExt': info[vm.name]["guest_info"]["/VirtualBox/GuestAdd/VersionExt"],
-            'vagrant:OS/Release': info[vm.name]["guest_info"]["/VirtualBox/GuestInfo/OS/Release"],
-            'vagrant:name': info[vm.name]["vm_info"]["name"],
-            'vagrant:ostype': info[vm.name]["vm_info"]["ostype"],
-            'vagrant:UUID': info[vm.name]["vm_info"]["UUID"],
-            'vagrant:CfgFile': info[vm.name]["vm_info"]["CfgFile"],
-            'vagrant:LogFldr': info[vm.name]["vm_info"]["LogFldr"],
-            'vagrant:hardwareuuid': info[vm.name]["vm_info"]["hardwareuuid"],
-            'vagrant:memory': info[vm.name]["vm_info"]["memory"],
-            'vagrant:chipset': info[vm.name]["vm_info"]["chipset"],
-            'vagrant:firmware': info[vm.name]["vm_info"]["firmware"],
-            'vagrant:cpus': info[vm.name]["vm_info"]["cpus"],
-            'vagrant:VMState': info[vm.name]["vm_info"]["VMState"],
-            'vagrant:VMStateChangeTime': info[vm.name]["vm_info"]["VMStateChangeTime"],
-            'vagrant:SATA-Controller': info[vm.name]["vm_info"]["SATA Controller-0-0"],
-            'vagrant:SATA-ImageUUID': info[vm.name]["vm_info"]["SATA Controller-ImageUUID-0-0"],
-            'vagrant:SharedFolderPath': info[vm.name]["vm_info"]["SharedFolderPathMachineMapping1"]
+            'vagrant:vmname': m.name,
+            'vagrant:ostype': m.os_type_id,
+            'vagrant:UUID': m.hardware_uuid,
+            'vagrant:path': path,
+            'vagrant:LogFldr': m.log_folder,
+            'vagrant:hardwareuuid': m.hardware_uuid,
+            'vagrant:memory': m.memory_size,
+            #'vagrant:chipset': m.chipset_type.,
+            #'vagrant:firmware': m.firmware_type,
+            'vagrant:cpus': m.cpu_count,
+            'vagrant:VMState': str(m.state),
+            'description': m.description
+
         }
 
-        default_settings.update(net_list)
+        for index,key in enumerate(net_info_keys):
+            value = net_info_values[index]
+            match = re.match("\/VirtualBox\/GuestInfo\/Net\/(.*)\/V4\/IP", key)
+            if match:
+                ipmatch = re.match(ip_pattern, value)
+                net = {"vagrant:" + key: value}
+                net_list.update(net)
+
+                if (ipmatch):
+                    log.debug("IP matched: %s" % value)
+                    hostname = value
+
+            default_settings.update({'vagrant:'+key.replace("/VirtualBox/",""): value})
+
         # rundeck attributes
-        node =default_settings
+        node = default_settings
+
+        node["osFamily"] = default_settings["vagrant:GuestInfo/OS/Product"]
+        node["osType"] = default_settings["vagrant:ostype"]
 
         node["hostname"] = hostname
         node["nodename"] = nodename
-        node["osFamily"] = default_settings["vagrant:OS/Product"]
-        node["osType"] = default_settings["vagrant:ostype"]
 
         node["tags"] = "vagrant"
 
