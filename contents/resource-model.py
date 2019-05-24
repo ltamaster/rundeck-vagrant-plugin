@@ -80,69 +80,79 @@ for vm in list:
         v1 = vagrant.Vagrant(vm.path)
 
         vm_id_path = vm.path + "/.vagrant/machines/"+vm.name+"/virtualbox/id"
+        log.debug("searching VM ID on %s"%vm_id_path)
 
         f = open(vm_id_path, "r")
         id = f.read()
         f.close()
 
-        m  = vbox.find_machine(id)
+        log.debug("ID found %s" % id)
+        m  = None
+        try:
+            m = vbox.find_machine(id)
+        except:
+            log.debug("VM not found")
 
-        log.debug("getting vm: %s" % vm.name)
 
-        nodename = vm.name
-        hostname = nodename
+        if m:
+            log.debug("VM found %s" % m.name)
 
-        net_list = {}
+            log.debug("getting vm: %s" % vm.name)
 
-        net_info = m.enumerate_guest_properties("*")
-        net_info_keys = net_info[0]
-        net_info_values = net_info[1]
+            nodename = vm.name
+            hostname = nodename
 
-        default_settings = {
-            'vagrant:vmname': m.name,
-            'vagrant:ostype': m.os_type_id,
-            'vagrant:UUID': m.hardware_uuid,
-            'vagrant:path': path,
-            'vagrant:LogFldr': m.log_folder,
-            'vagrant:hardwareuuid': m.hardware_uuid,
-            'vagrant:memory': m.memory_size,
-            #'vagrant:chipset': m.chipset_type.,
-            #'vagrant:firmware': m.firmware_type,
-            'vagrant:cpus': m.cpu_count,
-            'vagrant:VMState': str(m.state),
-            'description': m.description
+            net_list = {}
 
-        }
+            net_info = m.enumerate_guest_properties("*")
+            net_info_keys = net_info[0]
+            net_info_values = net_info[1]
 
-        for index,key in enumerate(net_info_keys):
-            value = net_info_values[index]
-            match = re.match("\/VirtualBox\/GuestInfo\/Net\/(.*)\/V4\/IP", key)
-            if match:
-                ipmatch = re.match(ip_pattern, value)
-                net = {"vagrant:" + key: value}
-                net_list.update(net)
+            default_settings = {
+                'vagrant:vmname': m.name,
+                'vagrant:ostype': m.os_type_id,
+                'vagrant:UUID': m.hardware_uuid,
+                'vagrant:path': path,
+                'vagrant:LogFldr': m.log_folder,
+                'vagrant:hardwareuuid': m.hardware_uuid,
+                'vagrant:memory': m.memory_size,
+                #'vagrant:chipset': m.chipset_type.,
+                #'vagrant:firmware': m.firmware_type,
+                'vagrant:cpus': m.cpu_count,
+                'vagrant:VMState': str(m.state),
+                'description': m.description
 
-                if (ipmatch):
-                    log.debug("IP matched: %s" % value)
-                    hostname = value
+            }
 
-            default_settings.update({'vagrant:'+key.replace("/VirtualBox/",""): value})
+            for index,key in enumerate(net_info_keys):
+                value = net_info_values[index]
+                match = re.match("\/VirtualBox\/GuestInfo\/Net\/(.*)\/V4\/IP", key)
+                if match:
+                    ipmatch = re.match(ip_pattern, value)
+                    net = {"vagrant:" + key: value}
+                    net_list.update(net)
 
-        # rundeck attributes
-        node = default_settings
+                    if (ipmatch):
+                        log.debug("IP matched: %s" % value)
+                        hostname = value
 
-        node["osFamily"] = default_settings["vagrant:GuestInfo/OS/Product"]
-        node["osType"] = default_settings["vagrant:ostype"]
+                default_settings.update({'vagrant:'+key.replace("/VirtualBox/",""): value})
 
-        node["hostname"] = hostname
-        node["nodename"] = nodename
+            # rundeck attributes
+            node = default_settings
 
-        node["tags"] = "vagrant"
+            node["osFamily"] = default_settings["vagrant:GuestInfo/OS/Product"]
+            node["osType"] = default_settings["vagrant:ostype"]
 
-        if defaults:
-            node.update(dict(token.split('=') for token in shlex.split(defaults)))
+            node["hostname"] = hostname
+            node["nodename"] = nodename
 
-        node_list.append(node)
+            node["tags"] = "vagrant"
+
+            if defaults:
+                node.update(dict(token.split('=') for token in shlex.split(defaults)))
+
+            node_list.append(node)
 
 y = json.dumps(node_list)
 
